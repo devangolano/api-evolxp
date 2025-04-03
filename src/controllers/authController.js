@@ -32,27 +32,70 @@ const register = async (req, res) => {
   }
 };
 
-const login = async (req, res) => {
+const getUsersByDocument = async (req, res) => {
   try {
-    const { document, password } = req.body;
+    const { document } = req.body;
 
-    const user = await User.findOne({ where: { document } });
-    if (!user) {
-      return res.status(400).json({ error: 'User not found' });
-    }
-
-    const validPassword = await bcrypt.compare(password, user.password);
-    if (!validPassword) {
-      return res.status(400).json({ error: 'Invalid password' });
-    }
-
-    user.password = undefined;
-
-    const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, {
-      expiresIn: '1d'
+    const user = await User.findOne({
+      where: { document },
+      attributes: ['id', 'prefecture']
     });
 
-    return res.status(200).json({ user, token });
+    if (!user) {
+      return res.status(400).json({ error: 'Nenhum usuário encontrado!' });
+    }
+
+    return res.status(200).json({ 
+      id: user.id,
+      prefecture: user.prefecture 
+    });
+  } catch (error) {
+    return res.status(500).json({ error: 'Failed to fetch user information' });
+  }
+};
+
+const login = async (req, res) => {
+  try {
+    const { document, prefecture, password } = req.body;
+
+    const user = await User.findOne({
+      where: { document }
+    });
+
+    if (!user) {
+      return res.status(400).json({ error: 'Usuário não encontrado' });
+    }
+
+    // Se apenas o documento foi enviado, retorna a prefeitura
+    if (!prefecture && !password) {
+      return res.status(200).json({
+        id: user.id,
+        prefecture: user.prefecture
+      });
+    }
+
+    // Verifica se a prefeitura corresponde
+    if (prefecture && prefecture !== user.prefecture) {
+      return res.status(400).json({ error: 'Prefeitura não corresponde ao usuário' });
+    }
+
+    // Verifica a senha apenas quando todos os campos estão presentes
+    if (document && prefecture && password) {
+      const validPassword = await bcrypt.compare(password, user.password);
+      if (!validPassword) {
+        return res.status(400).json({ error: 'Senha inválida' });
+      }
+
+      user.password = undefined;
+
+      const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, {
+        expiresIn: '1d'
+      });
+
+      return res.status(200).json({ user, token });
+    }
+
+    return res.status(400).json({ error: 'Dados incompletos' });
   } catch (error) {
     return res.status(500).json({ error: 'Login failed' });
   }
@@ -60,5 +103,6 @@ const login = async (req, res) => {
 
 module.exports = {
   register,
-  login
+  login,
+  getUsersByDocument
 };
