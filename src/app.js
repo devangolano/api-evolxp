@@ -1,20 +1,17 @@
 const express = require('express');
 const cors = require('cors');
-const helmet = require('helmet');
-const morgan = require('morgan');
-const authRoutes = require('./routes/authRoutes');
+const path = require('path');
+require('dotenv').config();
 
 const app = express();
 
-// Middlewares
 app.use(cors());
-app.use(helmet());
-app.use(morgan('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use('/uploads', express.static('uploads'));
+app.use('/uploads', express.static(path.resolve(__dirname, '..', 'uploads')));
 
 // Routes
+const authRoutes = require('./routes/authRoutes');
 app.use('/auth', authRoutes);
 
 module.exports = app;
